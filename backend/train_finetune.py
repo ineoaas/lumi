@@ -2,10 +2,6 @@
 Simple fine-tuning script using Hugging Face Trainer.
 Usage:
   python train_finetune.py --train_file ../data/labeled_samples.jsonl --output_dir models/emotion-finetuned --model_name distilroberta-base
-
-Notes:
-- Requires `datasets` and `transformers` packages.
-- For reasonable speed, use a GPU.
 """
 import argparse
 import json
