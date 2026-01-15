@@ -3,6 +3,10 @@ import '../services/database_service.dart';
 import 'chart_of_day_screen.dart';
 import 'journal_screen.dart';
 import 'reflection_summary_screen.dart';
+import 'entry_edit_screen.dart';
+import 'privacy_policy_screen.dart';
+import 'terms_screen.dart';
+import 'home_screen.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({Key? key}) : super(key: key);
@@ -65,18 +69,30 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Color _getColorFromHex(String? colorHex) {
     if (colorHex == null) return Colors.grey.shade300;
     try {
-      // Remove # if present
       final hex = colorHex.replaceAll('#', '');
 
-      // Extract hue from the hex (first 3 digits represent hue 0-360)
-      final hueStr = hex.substring(0, 3);
-      final hue = int.parse(hueStr);
+      // Check if it's the old format (hue encoded as first 3 digits, rest is 000)
+      // But skip if it's all zeros (000000) - that's invalid/neutral
+      if (hex.length == 6 && hex.substring(3) == '000' && hex != '000000') {
+        final hueStr = hex.substring(0, 3);
+        final hue = int.parse(hueStr);
+        if (hue > 0 && hue <= 360) {
+          return HSLColor.fromAHSL(1.0, hue.toDouble(), 0.75, 0.55).toColor();
+        }
+      }
 
-      // Convert to HSL color
-      return HSLColor.fromAHSL(1.0, hue.toDouble(), 0.75, 0.55).toColor();
+      // Try parsing as standard hex color
+      if (hex.length == 6) {
+        final color = Color(int.parse('FF$hex', radix: 16));
+        // Skip pure black (likely invalid/neutral)
+        if (color.value != 0xFF000000) {
+          return color;
+        }
+      }
     } catch (e) {
-      return Colors.grey.shade300;
+      // Fall through to grey
     }
+    return Colors.grey.shade300;
   }
 
   void _previousMonth() {
@@ -127,6 +143,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   padding: const EdgeInsets.all(20.0),
                   child: Row(
                     children: [
+                      IconButton(
+                        icon: const Icon(Icons.home, color: Colors.white, size: 28),
+                        onPressed: () {
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(builder: (context) => const HomeScreen()),
+                            (route) => false,
+                          );
+                        },
+                      ),
                       Icon(Icons.menu_book, color: Colors.white, size: 40),
                       const SizedBox(width: 12),
                       const Text(
@@ -333,7 +359,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                         final color = hasEntry
                                             ? _getColorFromHex(
                                                 entry['color_hex'])
-                                            : Colors.grey.shade300;
+                                            : Colors.white.withOpacity(0.15);
 
                                         final isSelected = (_selectedStartDate != null &&
                                                 _selectedStartDate!.year == date.year &&
@@ -408,7 +434,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         width: 20,
                         height: 20,
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade300,
+                          color: Colors.white.withOpacity(0.15),
                           borderRadius: BorderRadius.circular(4),
                         ),
                       ),
@@ -417,39 +443,39 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         'No entry',
                         style: TextStyle(color: Colors.white, fontSize: 12),
                       ),
-                      const SizedBox(width: 20),
-                      Container(
-                        width: 20,
-                        height: 20,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF10b981),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(
-                            color: Colors.white.withOpacity(0.3),
-                            width: 2,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'Has entry',
-                        style: TextStyle(color: Colors.white, fontSize: 12),
-                      ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 40),
                 // Footer
-                const Padding(
-                  padding: EdgeInsets.only(bottom: 20),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 20),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text('Privacy Policy',
-                          style: TextStyle(color: Colors.white)),
-                      SizedBox(width: 40),
-                      Text('Terms & Conditions',
-                          style: TextStyle(color: Colors.white)),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => const PrivacyPolicyScreen()),
+                          );
+                        },
+                        child: const Text('Privacy Policy',
+                            style: TextStyle(color: Colors.white)),
+                      ),
+                      const SizedBox(width: 20),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => const TermsScreen()),
+                          );
+                        },
+                        child: const Text('Terms & Conditions',
+                            style: TextStyle(color: Colors.white)),
+                      ),
                     ],
                   ),
                 ),
@@ -481,12 +507,19 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   void _handleDateTap(DateTime date) {
     if (!_isSelectingRange) {
-      // First tap - check if entry exists, show details
+      // Navigate to edit screen (for viewing/editing existing or creating new)
       final dateStr = date.toIso8601String().split('T')[0];
       final entry = _entriesByDate[dateStr];
-      if (entry != null) {
-        _showEntryDetails(context, entry);
+
+      // Don't allow editing future dates
+      if (date.isAfter(DateTime.now())) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Cannot add entries for future dates')),
+        );
+        return;
       }
+
+      _navigateToEditScreen(dateStr, entry);
     } else {
       // Range selection mode
       setState(() {
@@ -555,6 +588,23 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
+  Future<void> _navigateToEditScreen(String date, Map<String, dynamic>? entry) async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EntryEditScreen(
+          date: date,
+          existingEntry: entry,
+        ),
+      ),
+    );
+
+    // Refresh calendar if changes were made
+    if (result == true) {
+      _loadCalendarData();
+    }
+  }
+
   void _showEntryDetails(BuildContext context, Map<String, dynamic> entry) {
     showDialog(
       context: context,
@@ -610,6 +660,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ],
         ),
         actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _navigateToEditScreen(entry['date'], entry);
+            },
+            child: const Text('Edit'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Close'),

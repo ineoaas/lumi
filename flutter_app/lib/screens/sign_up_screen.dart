@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import 'home_screen.dart';
+import 'terms_screen.dart';
+import 'privacy_policy_screen.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({Key? key}) : super(key: key);
@@ -16,6 +18,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _confirmPasswordController = TextEditingController();
   bool _isLoading = false;
   String? _errorMessage;
+  bool _acceptedTerms = false;
 
   @override
   void dispose() {
@@ -46,6 +49,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
     if (_passwordController.text.length < 6) {
       setState(() {
         _errorMessage = 'Password must be at least 6 characters';
+      });
+      return;
+    }
+
+    if (!_acceptedTerms) {
+      setState(() {
+        _errorMessage = 'You must accept the Terms of Service and Privacy Policy';
       });
       return;
     }
@@ -189,6 +199,89 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 20),
+                    // Terms and Conditions checkbox
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: Checkbox(
+                            value: _acceptedTerms,
+                            onChanged: (value) {
+                              setState(() {
+                                _acceptedTerms = value ?? false;
+                              });
+                            },
+                            fillColor: WidgetStateProperty.resolveWith((states) {
+                              if (states.contains(WidgetState.selected)) {
+                                return Colors.green;
+                              }
+                              return Colors.white.withOpacity(0.3);
+                            }),
+                            checkColor: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Wrap(
+                            children: [
+                              const Text(
+                                'I agree to the ',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (context) => const TermsScreen()),
+                                  );
+                                },
+                                child: const Text(
+                                  'Terms of Service',
+                                  style: TextStyle(
+                                    color: Colors.yellow,
+                                    fontSize: 14,
+                                    decoration: TextDecoration.underline,
+                                    decorationColor: Colors.yellow,
+                                  ),
+                                ),
+                              ),
+                              const Text(
+                                ' and ',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (context) => const PrivacyPolicyScreen()),
+                                  );
+                                },
+                                child: const Text(
+                                  'Privacy Policy',
+                                  style: TextStyle(
+                                    color: Colors.yellow,
+                                    fontSize: 14,
+                                    decoration: TextDecoration.underline,
+                                    decorationColor: Colors.yellow,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                     if (_errorMessage != null) ...[
                       const SizedBox(height: 20),
                       Container(
@@ -204,7 +297,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         ),
                       ),
                     ],
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 30),
                     Center(
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : _handleSignUp,

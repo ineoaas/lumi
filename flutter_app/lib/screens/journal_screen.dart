@@ -6,6 +6,7 @@ import 'color_result_screen.dart';
 import 'chart_of_day_screen.dart';
 import 'calendar_screen.dart';
 import 'reflection_complete_screen.dart';
+import 'home_screen.dart';
 
 class JournalScreen extends StatefulWidget {
   const JournalScreen({Key? key}) : super(key: key);
@@ -135,6 +136,10 @@ class _JournalScreenState extends State<JournalScreen> {
                   padding: const EdgeInsets.all(20.0),
                   child: Row(
                     children: [
+                      IconButton(
+                        icon: const Icon(Icons.home, color: Colors.white, size: 28),
+                        onPressed: () => Navigator.pop(context),
+                      ),
                       Icon(Icons.menu_book, color: Colors.white, size: 40),
                       const SizedBox(width: 12),
                       const Text(

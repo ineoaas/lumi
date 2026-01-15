@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import '../services/lumi_service.dart';
 import 'calendar_screen.dart';
 import 'journal_screen.dart';
+import 'home_screen.dart';
 
 class ChartOfDayScreen extends StatefulWidget {
   const ChartOfDayScreen({Key? key}) : super(key: key);
@@ -100,6 +101,16 @@ class _ChartOfDayScreenState extends State<ChartOfDayScreen> {
                   padding: const EdgeInsets.all(20.0),
                   child: Row(
                     children: [
+                      IconButton(
+                        icon: const Icon(Icons.home, color: Colors.white, size: 28),
+                        onPressed: () {
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(builder: (context) => const HomeScreen()),
+                            (route) => false,
+                          );
+                        },
+                      ),
                       Icon(Icons.menu_book, color: Colors.white, size: 40),
                       const SizedBox(width: 12),
                       const Text(

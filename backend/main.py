@@ -15,6 +15,15 @@ class Entry(BaseModel):
     lines: list[str]
     user_id: Optional[str] = None
 
+def hue_to_hex(hue):
+    """Convert HSL hue (0-360) to RGB hex color with saturation=0.85, lightness=0.65"""
+    import colorsys
+    if hue is None:
+        return "#808080"  # Grey for neutral
+    # Convert HSL to RGB (colorsys uses 0-1 range)
+    r, g, b = colorsys.hls_to_rgb(hue / 360.0, 0.65, 0.85)
+    return f"#{int(r*255):02x}{int(g*255):02x}{int(b*255):02x}"
+
 @app.post("/predict")
 async def predict_color(entry: Entry):
     result = core.analyze_lines(entry.lines)
@@ -26,8 +35,8 @@ async def predict_color(entry: Entry):
         mood_score = int(float(confidence_str.rstrip('%')))
 
         # Convert hue to hex color
-        hue = result.get('hue', 0)
-        color_hex = f"#{hue:03d}000"
+        hue = result.get('hue')
+        color_hex = hue_to_hex(hue)
 
         # Save to database
         save_result = database.save_daily_color(
