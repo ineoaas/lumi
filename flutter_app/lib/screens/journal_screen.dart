@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import '../services/lumi_service.dart';
+import '../services/auth_service.dart';
+import '../services/database_service.dart';
 import 'color_result_screen.dart';
 import 'chart_of_day_screen.dart';
 import 'calendar_screen.dart';
+import 'reflection_complete_screen.dart';
 
 class JournalScreen extends StatefulWidget {
   const JournalScreen({Key? key}) : super(key: key);
@@ -13,10 +16,60 @@ class JournalScreen extends StatefulWidget {
 
 class _JournalScreenState extends State<JournalScreen> {
   final LumiService _lumiService = LumiService();
+  final DatabaseService _dbService = DatabaseService();
   final List<TextEditingController> _controllers =
       List.generate(5, (_) => TextEditingController());
-  bool _isLoading = false;
+  bool _isLoading = true;
+  bool _hasEntryToday = false;
+  Map<String, dynamic>? _todaysEntry;
   String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkTodaysEntry();
+  }
+
+  Future<void> _checkTodaysEntry() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final today = DateTime.now().toIso8601String().split('T')[0];
+      final entry = await _dbService.getColorByDate(today);
+
+      if (entry != null) {
+        // User already has an entry for today
+        setState(() {
+          _hasEntryToday = true;
+          _todaysEntry = entry;
+          _isLoading = false;
+        });
+
+        // Navigate to reflection complete screen
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) =>
+                  ReflectionCompleteScreen(todaysEntry: entry),
+            ),
+          );
+        }
+      } else {
+        setState(() {
+          _hasEntryToday = false;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Failed to check entry: $e';
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -28,6 +81,28 @@ class _JournalScreenState extends State<JournalScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Show loading while checking for today's entry
+    if (_isLoading) {
+      return Scaffold(
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: RadialGradient(
+              center: Alignment.center,
+              radius: 1.5,
+              colors: [
+                Color(0xFF8b5cf6),
+                Color(0xFF6366f1),
+                Color(0xFF4c1d95),
+              ],
+            ),
+          ),
+          child: const Center(
+            child: CircularProgressIndicator(color: Colors.white),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       body: Stack(
         children: [
@@ -253,10 +328,36 @@ class _JournalScreenState extends State<JournalScreen> {
         return;
       }
 
-      final result = await _lumiService.predictLines(lines);
-      if (!mounted) {
+      // Get real user ID from authentication
+      final userId = AuthService().currentUserId;
+      if (userId == null) {
+        setState(() {
+          _errorMessage = 'Not logged in';
+          _isLoading = false;
+        });
         return;
       }
+
+      // Get AI analysis from backend
+      final result = await _lumiService.predictLines(lines);
+      if (!mounted) return;
+
+      // Save to database using authenticated Supabase client
+      final dbService = DatabaseService();
+      final hue = result['hue'] as int? ?? 0;
+      final colorHex = '#${hue.toString().padLeft(3, '0')}000';
+      final confidenceStr = result['confidence'] as String? ?? '0%';
+      final moodScore = int.parse(confidenceStr.replaceAll('%', '').split('.')[0]);
+
+      await dbService.saveDailyColor(
+        userId: userId,
+        emotion: result['emotion'] as String? ?? 'Neutral',
+        colorHex: colorHex,
+        moodScore: moodScore,
+        description: result['summary'] as String?,
+      );
+
+      if (!mounted) return;
 
       setState(() {
         _isLoading = false;

@@ -1,15 +1,86 @@
 import 'package:flutter/material.dart';
-import 'journal_screen.dart';
+import '../services/auth_service.dart';
+import 'home_screen.dart';
 
-class SignUpScreen extends StatelessWidget {
+class SignUpScreen extends StatefulWidget {
   const SignUpScreen({Key? key}) : super(key: key);
+
+  @override
+  State<SignUpScreen> createState() => _SignUpScreenState();
+}
+
+class _SignUpScreenState extends State<SignUpScreen> {
+  final _authService = AuthService();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleSignUp() async {
+    // Validation
+    if (_emailController.text.trim().isEmpty ||
+        _passwordController.text.isEmpty ||
+        _confirmPasswordController.text.isEmpty) {
+      setState(() {
+        _errorMessage = 'Please fill in all fields';
+      });
+      return;
+    }
+
+    if (_passwordController.text != _confirmPasswordController.text) {
+      setState(() {
+        _errorMessage = 'Passwords do not match';
+      });
+      return;
+    }
+
+    if (_passwordController.text.length < 6) {
+      setState(() {
+        _errorMessage = 'Password must be at least 6 characters';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await _authService.signUp(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      if (!mounted) return;
+
+      // Navigate to home screen
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: [
-          // Background
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -19,7 +90,6 @@ class SignUpScreen extends StatelessWidget {
               ),
             ),
           ),
-          // Character illustration
           Positioned(
             bottom: 0,
             left: 0,
@@ -34,7 +104,6 @@ class SignUpScreen extends StatelessWidget {
               ),
             ),
           ),
-          // Sign Up Form
           SafeArea(
             child: SingleChildScrollView(
               child: Padding(
@@ -52,7 +121,7 @@ class SignUpScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 60),
                     const Text(
-                      'Username:',
+                      'Email:',
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w600,
@@ -61,6 +130,8 @@ class SignUpScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                     TextField(
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
                       style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
                         fillColor: Colors.white.withOpacity(0.2),
@@ -82,6 +153,7 @@ class SignUpScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                     TextField(
+                      controller: _passwordController,
                       obscureText: true,
                       style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
@@ -105,6 +177,7 @@ class SignUpScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                     TextField(
+                      controller: _confirmPasswordController,
                       obscureText: true,
                       style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
@@ -116,38 +189,25 @@ class SignUpScreen extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 30),
-                    const Text(
-                      'Email:',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    TextField(
-                      style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        fillColor: Colors.white.withOpacity(0.2),
-                        filled: true,
-                        border: OutlineInputBorder(
+                    if (_errorMessage != null) ...[
+                      const SizedBox(height: 20),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade900.withOpacity(0.3),
                           borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide.none,
+                          border: Border.all(color: Colors.red.shade300),
+                        ),
+                        child: Text(
+                          _errorMessage!,
+                          style: const TextStyle(color: Colors.white),
                         ),
                       ),
-                    ),
+                    ],
                     const SizedBox(height: 40),
                     Center(
                       child: ElevatedButton(
-                        onPressed: () {
-                          // Navigate to journal screen
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => const JournalScreen()),
-                          );
-                        },
+                        onPressed: _isLoading ? null : _handleSignUp,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
                           foregroundColor: const Color(0xFF4a148c),
@@ -157,47 +217,22 @@ class SignUpScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        child: const Text(
-                          'Continue',
-                          style: TextStyle(
-                              fontSize: 20, fontWeight: FontWeight.w700),
-                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Color(0xFF4a148c)),
+                                ),
+                              )
+                            : const Text(
+                                'Continue',
+                                style: TextStyle(
+                                    fontSize: 20, fontWeight: FontWeight.w700),
+                              ),
                       ),
-                    ),
-                    const SizedBox(height: 60),
-                    // Footer
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text('Privacy Policy',
-                            style: TextStyle(color: Colors.white)),
-                        SizedBox(width: 40),
-                        Text('Terms & Conditions',
-                            style: TextStyle(color: Colors.white)),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.camera_alt,
-                              color: Colors.white, size: 32),
-                          onPressed: () {},
-                        ),
-                        const SizedBox(width: 20),
-                        IconButton(
-                          icon: const Icon(Icons.facebook,
-                              color: Colors.white, size: 32),
-                          onPressed: () {},
-                        ),
-                        const SizedBox(width: 20),
-                        IconButton(
-                          icon: const Icon(Icons.business,
-                              color: Colors.white, size: 32),
-                          onPressed: () {},
-                        ),
-                      ],
                     ),
                   ],
                 ),

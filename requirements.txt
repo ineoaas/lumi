@@ -5,3 +5,5 @@ torch
 datasets
 pytest
 pydantic
+supabase
+python-dotenv

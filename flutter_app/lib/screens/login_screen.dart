@@ -1,16 +1,68 @@
 import 'package:flutter/material.dart';
+import '../services/auth_service.dart';
 import 'sign_up_screen.dart';
-import 'journal_screen.dart';
+import 'home_screen.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final _authService = AuthService();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleLogin() async {
+    if (_emailController.text.trim().isEmpty ||
+        _passwordController.text.isEmpty) {
+      setState(() {
+        _errorMessage = 'Please enter email and password';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await _authService.signIn(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: [
-          // Background with illustration
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -20,7 +72,6 @@ class LoginScreen extends StatelessWidget {
               ),
             ),
           ),
-          // Character illustration (simplified)
           Positioned(
             bottom: 0,
             left: 0,
@@ -35,7 +86,6 @@ class LoginScreen extends StatelessWidget {
               ),
             ),
           ),
-          // Login Form
           SafeArea(
             child: SingleChildScrollView(
               child: Padding(
@@ -53,7 +103,7 @@ class LoginScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 60),
                     const Text(
-                      'Username:',
+                      'Email:',
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w600,
@@ -62,6 +112,8 @@ class LoginScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                     TextField(
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
                       style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
                         fillColor: Colors.white.withOpacity(0.2),
@@ -83,6 +135,7 @@ class LoginScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                     TextField(
+                      controller: _passwordController,
                       obscureText: true,
                       style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
@@ -94,17 +147,25 @@ class LoginScreen extends StatelessWidget {
                         ),
                       ),
                     ),
+                    if (_errorMessage != null) ...[
+                      const SizedBox(height: 20),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade900.withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.red.shade300),
+                        ),
+                        child: Text(
+                          _errorMessage!,
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 40),
                     Center(
                       child: ElevatedButton(
-                        onPressed: () {
-                          // Navigate to journal screen (skip auth for now)
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => const JournalScreen()),
-                          );
-                        },
+                        onPressed: _isLoading ? null : _handleLogin,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
                           foregroundColor: const Color(0xFF4a148c),
@@ -114,11 +175,21 @@ class LoginScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        child: const Text(
-                          'Continue',
-                          style: TextStyle(
-                              fontSize: 20, fontWeight: FontWeight.w700),
-                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Color(0xFF4a148c)),
+                                ),
+                              )
+                            : const Text(
+                                'Continue',
+                                style: TextStyle(
+                                    fontSize: 20, fontWeight: FontWeight.w700),
+                              ),
                       ),
                     ),
                     const SizedBox(height: 30),
@@ -141,41 +212,6 @@ class LoginScreen extends StatelessWidget {
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 100),
-                    // Footer
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text('Privacy Policy',
-                            style: TextStyle(color: Colors.white)),
-                        SizedBox(width: 40),
-                        Text('Terms & Conditions',
-                            style: TextStyle(color: Colors.white)),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.camera_alt,
-                              color: Colors.white, size: 32),
-                          onPressed: () {},
-                        ),
-                        const SizedBox(width: 20),
-                        IconButton(
-                          icon: const Icon(Icons.facebook,
-                              color: Colors.white, size: 32),
-                          onPressed: () {},
-                        ),
-                        const SizedBox(width: 20),
-                        IconButton(
-                          icon: const Icon(Icons.business,
-                              color: Colors.white, size: 32),
-                          onPressed: () {},
-                        ),
-                      ],
                     ),
                   ],
                 ),

@@ -9,12 +9,27 @@
 
 ### First Time Setup
 
-#### 1. Install Python Dependencies
+#### 1. Configure Database (Supabase)
+```bash
+# Copy the example environment file
+cp .env.example .env
+
+# Edit .env and add your Supabase credentials:
+# SUPABASE_URL=https://your-project.supabase.co
+# SUPABASE_KEY=your-anon-key-here
+```
+
+Get your Supabase URL and key from:
+- Go to your Supabase project dashboard
+- Settings → API
+- Copy "Project URL" and "anon public" key
+
+#### 2. Install Python Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-#### 2. Install Flutter (if not already installed)
+#### 3. Install Flutter (if not already installed)
 
 **Windows:**
 ```bash
@@ -132,4 +147,15 @@ lumi-demo/
 
 - **Backend:** Python, FastAPI, Hugging Face Transformers
 - **Frontend:** Flutter (Dart)
+- **Database:** PostgreSQL (Supabase)
 - **ML Models:** Emotion classification + Zero-shot learning
+
+## Database API Endpoints
+
+Once configured, the backend provides these endpoints:
+
+- `POST /predict` - Analyze journal entry and save to database (include `user_id` in request)
+- `GET /colors/{user_id}` - Get recent daily colors
+- `GET /colors/{user_id}/date/{date}` - Get color for specific date
+- `GET /colors/{user_id}/range?start_date=...&end_date=...` - Get colors in date range
+- `GET /stats/{user_id}` - Get mood statistics for charts

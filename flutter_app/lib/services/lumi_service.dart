@@ -30,12 +30,17 @@ class LumiService {
   }
 
   /// Predict emotion from multiple lines (recommended for Lumi demo)
+  /// No longer saves to database - returns analysis only
   Future<Map<String, dynamic>> predictLines(List<String> lines) async {
     try {
+      final payload = {
+        'lines': lines,
+      };
+
       final response = await http.post(
         Uri.parse('$baseUrl/predict'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'lines': lines}),
+        body: jsonEncode(payload),
       );
 
       if (response.statusCode == 200) {
@@ -43,6 +48,77 @@ class LumiService {
       } else {
         throw Exception(
             'Failed to predict: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Network error: $e');
+    }
+  }
+
+  /// Get user's recent color entries from database
+  Future<List<Map<String, dynamic>>> getUserColors(String userId, {int limit = 30}) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/colors/$userId?limit=$limit'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return (data['colors'] as List).cast<Map<String, dynamic>>();
+      } else {
+        throw Exception('Failed to fetch colors: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Network error: $e');
+    }
+  }
+
+  /// Get mood statistics for a user
+  Future<Map<String, dynamic>> getMoodStats(String userId, {int days = 30}) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/stats/$userId?days=$days'),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        throw Exception('Failed to fetch stats: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Network error: $e');
+    }
+  }
+
+  /// Get community mood statistics for today (all users, anonymous)
+  Future<Map<String, dynamic>> getCommunityMoodToday() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/community/mood-today'),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        throw Exception('Failed to fetch community mood: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Network error: $e');
+    }
+  }
+
+  /// Summarize multiple journal reflections
+  Future<Map<String, dynamic>> summarizeReflections(List<String> reflections) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/summarize'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'reflections': reflections}),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        throw Exception('Failed to summarize: ${response.statusCode}');
       }
     } catch (e) {
       throw Exception('Network error: $e');
